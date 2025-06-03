@@ -1,0 +1,207 @@
+import requests
+from langchain.chains import RetrievalQA
+from langchain.document_loaders import WebBaseLoader
+from langchain.embeddings.openai import OpenAIEmbeddings
+from langchain.vectorstores import FAISS
+from langchain.llms import OpenAI
+from langchain.text_splitter import CharacterTextSplitter
+
+# For user interaction
+def confirm_post(platform, caption):
+    print(f"\n--- Ready to post on {platform} ---")
+    print(f"Caption:\n{caption}")
+    answer = input("Do you want to proceed with posting? (yes/no): ")
+    return answer.strip().lower() == 'yes'
+
+
+# Load and embed CloudJune homepage for RAG
+def build_retriever(url):
+    loader = WebBaseLoader(url)
+    raw_docs = loader.load()
+
+    # Split docs to smaller chunks
+    splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+    docs = splitter.split_documents(raw_docs)
+
+    # Create embeddings index
+    embeddings = OpenAIEmbeddings()
+    vectorstore = FAISS.from_documents(docs, embeddings)
+
+    return vectorstore.as_retriever(search_kwargs={"k": 3})
+
+
+# Generate caption about CloudJune services using RAG + OpenAI
+def generate_caption(retriever):
+    llm = OpenAI(temperature=0.7, max_tokens=150)
+    qa = RetrievalQA.from_chain_type(
+        llm=llm,
+        chain_type="stuff",
+        retriever=retriever,
+        return_source_documents=False
+    )
+    prompt = (
+        "Generate a creative social media caption about the CloudJune company's cloud computing services "
+        "based on the following information:"
+    )
+    caption = qa.run(prompt)
+    return caption
+
+
+# Posting functions for each platform:
+
+def post_facebook(page_access_token, page_id, caption):
+    url = f"https://graph.facebook.com/v17.0/{page_id}/feed"
+    params = {
+        "message": caption,
+        "access_token": page_access_token
+    }
+    response = requests.post(url, params=params)
+    if response.ok:
+        print("Posted to Facebook successfully!")
+    else:
+        print(f"Facebook post failed: {response.text}")
+
+
+def post_instagram(page_access_token, page_id, image_url, caption):
+    # Step 1: Get IG Business Account ID
+    url = f"https://graph.facebook.com/v17.0/{page_id}"
+    params = {
+        "fields": "instagram_business_account",
+        "access_token": page_access_token
+    }
+    r = requests.get(url, params=params)
+    if not r.ok:
+        print(f"Failed to get IG Business Account ID: {r.text}")
+        return
+    ig_account_id = r.json().get("instagram_business_account", {}).get("id")
+    if not ig_account_id:
+        print("Instagram Business Account not linked to Page.")
+        return
+
+    # Step 2: Create media object
+    create_url = f"https://graph.facebook.com/v17.0/{ig_account_id}/media"
+    create_params = {
+        "image_url": image_url,
+        "caption": caption,
+        "access_token": page_access_token
+    }
+    create_resp = requests.post(create_url, data=create_params)
+    if not create_resp.ok:
+        print(f"Failed to create media on Instagram: {create_resp.text}")
+        return
+    creation_id = create_resp.json().get("id")
+
+    # Step 3: Publish media
+    publish_url = f"https://graph.facebook.com/v17.0/{ig_account_id}/media_publish"
+    publish_params = {
+        "creation_id": creation_id,
+        "access_token": page_access_token
+    }
+    publish_resp = requests.post(publish_url, data=publish_params)
+    if publish_resp.ok:
+        print("Posted to Instagram successfully!")
+    else:
+        print(f"Instagram post failed: {publish_resp.text}")
+
+
+def post_twitter(bearer_token, caption):
+    url = "https://api.twitter.com/2/tweets"
+    headers = {
+        "Authorization": f"Bearer {bearer_token}",
+        "Content-Type": "application/json"
+    }
+    json_data = {
+        "text": caption
+    }
+    response = requests.post(url, headers=headers, json=json_data)
+    if response.ok:
+        print("Posted to Twitter successfully!")
+    else:
+        print(f"Twitter post failed: {response.text}")
+
+
+def post_linkedin(access_token, caption):
+    # Get your own LinkedIn user URN
+    me_url = "https://api.linkedin.com/v2/me"
+    headers = {
+        "Authorization": f"Bearer {access_token}"
+    }
+    me_resp = requests.get(me_url, headers=headers)
+    if not me_resp.ok:
+        print(f"Failed to get LinkedIn user info: {me_resp.text}")
+        return
+    user_urn = me_resp.json().get("id")
+    if not user_urn:
+        print("Failed to retrieve LinkedIn user URN")
+        return
+
+    post_url = "https://api.linkedin.com/v2/ugcPosts"
+    post_headers = {
+        "Authorization": f"Bearer {access_token}",
+        "X-Restli-Protocol-Version": "2.0.0",
+        "Content-Type": "application/json"
+    }
+    post_body = {
+        "author": f"urn:li:person:{user_urn}",
+        "lifecycleState": "PUBLISHED",
+        "specificContent": {
+            "com.linkedin.ugc.ShareContent": {
+                "shareCommentary": {"text": caption},
+                "shareMediaCategory": "NONE"
+            }
+        },
+        "visibility": {"com.linkedin.ugc.MemberNetworkVisibility": "PUBLIC"}
+    }
+    post_resp = requests.post(post_url, headers=post_headers, json=post_body)
+    if post_resp.ok:
+        print("Posted to LinkedIn successfully!")
+    else:
+        print(f"LinkedIn post failed: {post_resp.text}")
+
+
+# Main content agent function
+def content_agent():
+    print("Building retriever from CloudJune homepage...")
+    retriever = build_retriever("https://cloudjune.com")  # Use real URL here
+
+    caption = generate_caption(retriever)
+    print("\nGenerated Caption:\n", caption)
+
+    # Dummy image URL for Instagram (replace with your actual image hosting)
+    image_url = "https://example.com/sample-image.jpg"
+
+    # Ask user where to post
+    print("\nWhere do you want to post this content?")
+    print("1. Facebook")
+    print("2. Instagram")
+    print("3. Twitter")
+    print("4. LinkedIn")
+    choices = input("Enter comma-separated choices (e.g., 1,3): ")
+    platforms = choices.split(",")
+
+    # Tokens & IDs - Replace these with your real credentials
+    FACEBOOK_PAGE_ACCESS_TOKEN = "YOUR_FACEBOOK_PAGE_ACCESS_TOKEN"
+    FACEBOOK_PAGE_ID = "YOUR_FACEBOOK_PAGE_ID"
+    TWITTER_BEARER_TOKEN = "YOUR_TWITTER_BEARER_TOKEN"
+    LINKEDIN_ACCESS_TOKEN = "YOUR_LINKEDIN_ACCESS_TOKEN"
+
+    for platform in platforms:
+        platform = platform.strip()
+        if platform == "1":
+            if confirm_post("Facebook", caption):
+                post_facebook(FACEBOOK_PAGE_ACCESS_TOKEN, FACEBOOK_PAGE_ID, caption)
+        elif platform == "2":
+            if confirm_post("Instagram", caption):
+                post_instagram(FACEBOOK_PAGE_ACCESS_TOKEN, FACEBOOK_PAGE_ID, image_url, caption)
+        elif platform == "3":
+            if confirm_post("Twitter", caption):
+                post_twitter(TWITTER_BEARER_TOKEN, caption)
+        elif platform == "4":
+            if confirm_post("LinkedIn", caption):
+                post_linkedin(LINKEDIN_ACCESS_TOKEN, caption)
+        else:
+            print(f"Unknown platform choice: {platform}")
+
+
+if __name__ == "__main__":
+    content_agent()

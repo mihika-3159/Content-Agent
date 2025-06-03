@@ -12,6 +12,9 @@ from langchain.text_splitter import CharacterTextSplitter
 from langchain.vectorstores import FAISS
 from langchain.schema import Document
 import openai
+from langchain.document_loaders import WebBaseLoader
+from langchain.vectorstores import Chroma
+from langchain.text_splitter import RecursiveCharacterTextSplitter
 # Social media APIs
 import tweepy
 
@@ -32,49 +35,84 @@ TWITTER_BEARER_TOKEN= os.getenv("TWITTER_BEARER_TOKEN")
 
 # Helper: Retrieve web content and build retriever 
 
-def build_retriever(url: str):
-    response = requests.get(url)
-    soup = BeautifulSoup(response.text, "html.parser")
+from urllib.parse import urljoin, urlparse
+import time
 
-    # Extract visible text from the page
-    text = soup.get_text(separator="\n", strip=True)
+def is_valid_url(url, domain):
+    return urlparse(url).netloc == urlparse(domain).netloc
 
-    # Avoid large token count
-    if len(text) > 500_000:
-        text = text[:500_000]  # truncate to prevent embedding overflow
+def crawl_website(start_url, max_pages=20):
+    visited = set()
+    to_visit = [start_url]
+    pages = []
 
-    doc = Document(page_content=text, metadata={"source": url})
-    docs = [doc]
+    while to_visit and len(visited) < max_pages:
+        url = to_visit.pop(0)
+        if url in visited:
+            continue
+        try:
+            response = requests.get(url, timeout=10)
+            visited.add(url)
+            if response.status_code == 200:
+                soup = BeautifulSoup(response.text, 'html.parser')
+                text = soup.get_text(separator=' ', strip=True)
+                pages.append({"url": url, "content": text})
 
-    splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
-    splitted_docs = splitter.split_documents(docs)
+                for link in soup.find_all('a', href=True):
+                    full_url = urljoin(url, link['href'])
+                    if is_valid_url(full_url, start_url) and full_url not in visited:
+                        to_visit.append(full_url)
 
-    embeddings = OpenAIEmbeddings()
-    vectorstore = FAISS.from_documents(splitted_docs, embeddings)
+                time.sleep(1)  # be respectful of rate limits
+        except Exception as e:
+            print(f"Error fetching {url}: {e}")
 
-    return vectorstore.as_retriever(search_kwargs={"k": 3})
+    return pages
+
 
 # Generate caption using LangChain RAG pipeline
-def generate_caption(topic: str, retriever):
-    prompt_template = PromptTemplate(
-        input_variables=["context", "question"],
-        template="""
-You are a social media expert. Use the following context to write a short, engaging caption for a post about "{question}" on Instagram/Facebook/Twitter/LinkedIn:
+def generate_caption_and_content(topic, retrieved_docs):
+    openai.api_key = os.getenv("OPENAI_API_KEY")
 
-Context:
+    # Combine retrieved content
+    context = "\n\n".join([f"{i+1}. {doc.page_content}" for i, doc in enumerate(retrieved_docs[:5])])
+
+    # Prompt for generation
+    prompt = f"""
+You are a B2B tech content strategist. Based on the topic and contextual content below, write:
+
+1. A professional LinkedIn **caption** (max 250 characters) designed to spark interest.
+2. A concise and informative **LinkedIn post body** (80–150 words) written in simple, authoritative tone.
+
+Topic: {topic}
+
+Context from website content:
 {context}
 
-Caption:
+Format:
+CAPTION: <caption here>
+CONTENT: <content here>
 """
+
+    response = openai.ChatCompletion.create(
+        model="gpt-4o",
+        messages=[{"role": "user", "content": prompt}],
+        temperature=0.7
     )
-    qa = RetrievalQA.from_chain_type(
-        llm=ChatOpenAI(openai_api_key=OPENAI_API_KEY, model_name="gpt-4"),
-        retriever=retriever,
-        chain_type="stuff",  # <-- change here
-        chain_type_kwargs={"prompt": prompt_template},
-        return_source_documents=False
-    )
-    return qa.run(topic)
+
+    output = response["choices"][0]["message"]["content"]
+
+    # Extract caption and content robustly
+    caption = ""
+    content = ""
+    if "CAPTION:" in output and "CONTENT:" in output:
+        caption = output.split("CAPTION:")[1].split("CONTENT:")[0].strip()
+        content = output.split("CONTENT:")[1].strip()
+    else:
+        caption = "⚠️ Could not parse caption"
+        content = output.strip()
+
+    return caption, content
 
 #Image Generation
 def generate_image(prompt: str) -> str:
@@ -230,10 +268,11 @@ def create_post(image_asset_urn, text):
     return post_response.json()"""
 # Main script
 if __name__ == "__main__":
-    retriever = build_retriever("https://cloudjune.com")
-
+    retrieved_docs = [
+    type("Doc", (object,), {"page_content": page["content"], "metadata": {"source": page["url"]}})
+    for page in crawl_website("https://cloudjune.com")]
     topic = input("What do you want to post about today? ")
-    caption = generate_caption(topic, retriever)
+    caption = generate_caption_and_content(topic, retrieved_docs)
     print("\nGenerated caption:\n", caption)
     image_url = generate_image(caption)
     confirm = input("Do you want to proceed with posting? (y/n): ").lower()
