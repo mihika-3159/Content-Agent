@@ -7,3 +7,5 @@ tweepy
 openai
 faiss-cpu
 pytz
+langgraph>=0.2.0
+pydantic[email]
