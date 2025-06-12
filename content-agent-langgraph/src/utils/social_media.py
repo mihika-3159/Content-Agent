@@ -1,6 +1,5 @@
 import os
 import requests
-import tweepy
 from dotenv import load_dotenv
 import mimetypes
 load_dotenv()
@@ -21,7 +20,6 @@ def post_to_facebook(message: str, image_url: str = None):
         if image_url:
             img_response = requests.get(image_url)
             img_response.raise_for_status()
-            # Guess the content type from the URL or response headers
             content_type = img_response.headers.get('Content-Type') or mimetypes.guess_type(image_url)[0] or 'image/jpeg'
             files = {
                 'source': ('image.jpg', img_response.content, content_type)
@@ -31,7 +29,7 @@ def post_to_facebook(message: str, image_url: str = None):
                 'access_token': FACEBOOK_PAGE_TOKEN
             }
             res = requests.post(
-                f"https://graph.facebook.com/v19.0/{FACEBOOK_PAGE_ID}/photos",
+                f"https://graph.facebook.com/v22.0/{FACEBOOK_PAGE_ID}/photos",
                 data=payload,
                 files=files
             )
@@ -41,12 +39,10 @@ def post_to_facebook(message: str, image_url: str = None):
                 'access_token': FACEBOOK_PAGE_TOKEN
             }
             res = requests.post(
-                f"https://graph.facebook.com/v19.0/{FACEBOOK_PAGE_ID}/feed",
+                f"https://graph.facebook.com/v22.0/{FACEBOOK_PAGE_ID}/feed",
                 data=payload
             )
         res.raise_for_status()
-        if not res.ok:
-            print("Facebook error details:", res.text)
         print("✅ Facebook post successful!")
     except Exception as e:
         print("❌ Facebook post failed:", e)
@@ -55,8 +51,8 @@ def post_to_facebook(message: str, image_url: str = None):
 
 # Post to Instagram (must be image post)
 def post_to_instagram(caption: str, image_url: str):
-    graph_url = f"https://graph.facebook.com/v19.0/{INSTAGRAM_USER_ID}/media"
-    create_post_url = f"https://graph.facebook.com/v19.0/{INSTAGRAM_USER_ID}/media_publish"
+    graph_url = f"https://graph.facebook.com/v22.0/{INSTAGRAM_USER_ID}/media"
+    create_post_url = f"https://graph.facebook.com/v22.0/{INSTAGRAM_USER_ID}/media_publish"
 
     payload = {
         'image_url': image_url,
@@ -72,21 +68,11 @@ def post_to_instagram(caption: str, image_url: str):
         }
         publish_res = requests.post(create_post_url, data=publish_payload)
         if publish_res.status_code == 200:
-            print("Posted to Instagram!")
+            print("✅ Posted to Instagram!")
         else:
-            print("Instagram post failed:", publish_res.text)
+            print("❌ Instagram post failed:", publish_res.text)
     else:
-        print("Instagram media creation failed:", media_res)
-
-# Post to Twitter using tweepy
-def post_to_twitter(message: str):
-    try:
-        auth = tweepy.OAuth1UserHandler(TWITTER_CONSUMER_KEY, TWITTER_CONSUMER_SECRET, TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_SECRET)
-        api = tweepy.API(auth)
-        api.update_status(status=message)
-        print("Tweet posted successfully!")
-    except tweepy.TweepyException as e:
-        print("Tweeting failed:", e)
+        print("❌ Instagram media creation failed:", media_res)
 
 # Post to LinkedIn
 def post_to_linkedin(caption: str, image_url: str):
@@ -161,7 +147,7 @@ def convert_gst_to_utc(gst_datetime_str):
     return gst_time.astimezone(pytz.utc)
 
 def create_instagram_container(image_url, caption):
-    url = f"https://graph.facebook.com/v19.0/{INSTAGRAM_USER_ID}/media"
+    url = f"https://graph.facebook.com/v22.0/{INSTAGRAM_USER_ID}/media"
     payload = {
         "image_url": image_url,
         "caption": caption,
@@ -169,11 +155,11 @@ def create_instagram_container(image_url, caption):
     }
     res = requests.post(url, data=payload)
     data = res.json()
-    print("Instagram container response:", data)  # <-- Add this line
+    print("📦 Instagram container response:", data)
     return data.get("id")
 
 def schedule_instagram_post(container_id, scheduled_time_utc):
-    url = f"https://graph.facebook.com/v19.0/{INSTAGRAM_USER_ID}/media_publish"
+    url = f"https://graph.facebook.com/v22.0/{INSTAGRAM_USER_ID}/media_publish"
     payload = {
         "creation_id": container_id,
         "access_token": FACEBOOK_PAGE_TOKEN,
@@ -181,11 +167,11 @@ def schedule_instagram_post(container_id, scheduled_time_utc):
         "scheduled_publish_time": int(scheduled_time_utc.timestamp())
     }
     res = requests.post(url, data=payload)
-    print("Instagram scheduling response:", res.json())  # <-- Add this line
+    print("📅 Instagram scheduling response:", res.json())
     return res.json()
 
 def schedule_facebook_post(image_url, caption, scheduled_time_utc):
-    url = f"https://graph.facebook.com/v19.0/{FACEBOOK_PAGE_ID}/photos"
+    url = f"https://graph.facebook.com/v22.0/{FACEBOOK_PAGE_ID}/photos"
     payload = {
         "url": image_url,
         "caption": caption,
