@@ -11,7 +11,7 @@ TWITTER_CONSUMER_SECRET = os.getenv("TWITTER_CONSUMER_SECRET")
 TWITTER_ACCESS_TOKEN = os.getenv("TWITTER_ACCESS_TOKEN")
 TWITTER_ACCESS_SECRET = os.getenv("TWITTER_ACCESS_SECRET")
 LINKEDIN_ACCESS_TOKEN = os.getenv("LINKEDIN_ACCESS_TOKEN")
-COMPANY_URN = os.getenv("COMPANY_URN")
+COMPANY_URN = os.getenv("LINKEDIN_COMPANY_URN")
 FACEBOOK_PAGE_ID= os.getenv("FACEBOOK_PAGE_ID")
 
 # Post to Facebook using Graph API
@@ -75,57 +75,20 @@ def post_to_instagram(caption: str, image_url: str):
         print("❌ Instagram media creation failed:", media_res)
 
 # Post to LinkedIn
-def post_to_linkedin(caption: str, image_url: str):
+def post_to_linkedin(caption: str):
     headers = {
         "Authorization": f"Bearer {LINKEDIN_ACCESS_TOKEN}",
         "X-Restli-Protocol-Version": "2.0.0",
         "Content-Type": "application/json"
     }
 
-    # Step 1: Register the image for upload
-    upload_request = {
-        "registerUploadRequest": {
-            "recipes": ["urn:li:digitalmediaRecipe:feedshare-image"],
-            "owner": COMPANY_URN,
-            "serviceRelationships": [{
-                "relationshipType": "OWNER",
-                "identifier": "urn:li:userGeneratedContent"
-            }]
-        }
-    }
-    response = requests.post(
-        "https://api.linkedin.com/v2/assets?action=registerUpload",
-        headers=headers,
-        json=upload_request
-    )
-    response.raise_for_status()
-    data = response.json()
-    upload_url = data["value"]["uploadMechanism"]["com.linkedin.digitalmedia.uploading.MediaUploadHttpRequest"]["uploadUrl"]
-    image_asset_urn = data["value"]["asset"]
-
-    # Step 2: Upload the image
-    image_data = requests.get(image_url).content
-    upload_headers = {
-        "Authorization": f"Bearer {LINKEDIN_ACCESS_TOKEN}",
-        "Content-Type": "application/octet-stream"
-    }
-    upload_response = requests.put(upload_url, headers=upload_headers, data=image_data)
-    upload_response.raise_for_status()
-
-    # Step 3: Create the company post
     post_data = {
         "author": COMPANY_URN,
         "lifecycleState": "PUBLISHED",
         "specificContent": {
             "com.linkedin.ugc.ShareContent": {
                 "shareCommentary": {"text": caption},
-                "shareMediaCategory": "IMAGE",
-                "media": [{
-                    "status": "READY",
-                    "description": {"text": "Company post image"},
-                    "media": image_asset_urn,
-                    "title": {"text": "Post Image"}
-                }]
+                "shareMediaCategory": "NONE"
             }
         },
         "visibility": {
@@ -133,9 +96,16 @@ def post_to_linkedin(caption: str, image_url: str):
         }
     }
 
-    post_response = requests.post("https://api.linkedin.com/v2/ugcPosts", headers=headers, json=post_data)
-    post_response.raise_for_status()
-    print("Posted to LinkedIn!")
+    try:
+        post_response = requests.post(
+            "https://api.linkedin.com/v2/ugcPosts",
+            headers=headers,
+            json=post_data
+        )
+        post_response.raise_for_status()
+        print("✅ Posted text-only update to LinkedIn!")
+    except requests.HTTPError as e:
+        print(f"Failed to create LinkedIn post: {e} - {post_response.text}")
 import datetime
 import pytz
 
