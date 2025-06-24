@@ -47,6 +47,31 @@ content-agent-langgraph
    LINKEDIN_ORGANIZATION_ID=your_linkedin_organization_id
    ```
 
+## Generation of Tokens Instructions
+
+1. **Facebook and Instagram:**
+   - Go to Meta for developers
+   - Create an app using the facebook account you intend to post on
+   - Add the following use cases to the app
+      -> Manage everything on your page
+      -> Manage messaging and content on Instagram
+   - Use the Graph API explorer to generate the access token and IDs
+   - Add the following permissions: pages_read_engagement, pages_manage_posts, instagram_basic, instagram_content_publish, pages_show_list
+   - Run this: me/accounts
+   - The data in the 'id' field is your page id
+   - The data in the 'access token' field is your page access token
+   - Run this: /{enter_your_page_id}?fields=instagram_business_account
+   - The data in the 'id' field is your instagram account ID (must be a business account)
+
+2. **LinkedIn:**
+   - Go to LinkedIn for developers
+   - Create an app with the Community Management API (requires company page, company LinkedIn account, and approval)
+   - Go to OAuth 2.0 tools
+   - Generate a new access token as an Admin of the company page
+   - Run this in Postman: https://api.linkedin.com/v2/organizationAcls?q=roleAssignee&role=ADMINISTRATOR
+   - Add a header 'Authorization' with value 'Bearer enter_access_token'
+   - The data in the 'organization' field is your Company URN
+
 ## Usage
 
 1. **Run the agent:**
