@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Post Uploader</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="container">
+    <img src="logo.png" alt="Logo" style="display:block; margin:0 auto 20px; max-width:120px;" />
+    <h1>Content Management Agent</h1>
+
+    <form>
+      <label for="topic">Insert your prompt:</label>
+      <input type="text" id="topic" name="topic" placeholder="Enter post topic..." required />
+
+      <label for="image">Insert Image:</label>
+      <input type="file" id="image" name="image" accept="image/*" required />
+
+      <label>Choose Platforms:</label>
+      <div class="checkbox-group">
+        <label><input type="checkbox" name="platforms" value="facebook" /> Facebook</label>
+        <label><input type="checkbox" name="platforms" value="instagram" /> Instagram</label>
+        <label><input type="checkbox" name="platforms" value="linkedin" /> LinkedIn</label>
+      </div>
+
+      <button type="submit">Post</button>
+    </form>
+  </div>
+</body>
+</html>
