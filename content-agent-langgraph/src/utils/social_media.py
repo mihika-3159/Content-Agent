@@ -5,7 +5,7 @@ import mimetypes
 load_dotenv()
 # Load environment variables
 FACEBOOK_PAGE_TOKEN = os.getenv("FACEBOOK_PAGE_TOKEN")
-INSTAGRAM_USER_ID = os.getenv("INSTAGRAM_USER_ID")
+INSTAGRAM_USER_ID = os.getenv("IG_ACCOUNT_ID")
 LINKEDIN_ACCESS_TOKEN = os.getenv("LINKEDIN_ACCESS_TOKEN")
 COMPANY_URN = os.getenv("LINKEDIN_COMPANY_URN")
 FACEBOOK_PAGE_ID= os.getenv("FACEBOOK_PAGE_ID")
