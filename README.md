@@ -5,16 +5,21 @@ This project implements a LangGraph agent designed to generate engaging social m
 ## Project Structure
 
 ```
-content-agent-langgraph
-├── src
-│   ├── agent.py          # Main logic for the LangGraph agent
-│   ├── utils
-│   │   └── social_media.py # Utility functions for social media API interactions
-│   └── types
-│       └── index.py      # Custom types and interfaces for type safety
-├── .env                  # Environment variables for API keys and tokens
-├── requirements.txt      # Project dependencies
-└── README.md             # Project documentation
+content-agent-langgraph/
+├── src/               ← LangGraph logic & agents
+│   ├── agent.py
+│   ├── utils/social_media.py
+│   └── types/index.py
+├── web/               ← Flask UI server & frontend
+│   ├── app.py
+│   ├── static/
+│   │   ├── styles.css
+│   │   └── logo.png
+│   └── templates/
+│       └── index.html
+├── .env
+├── requirements.txt
+└── README.md
 ```
 
 ## Setup Instructions
