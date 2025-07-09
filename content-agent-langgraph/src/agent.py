@@ -7,8 +7,10 @@ from bs4 import BeautifulSoup
 from urllib.parse import urljoin, urlparse
 import requests, openai, time, os, pytz
 from datetime import datetime, timedelta
-
-OPENAI_API_KEY="your_openai_api_key_here"
+import analytics_agent
+from dotenv import load_dotenv
+load_dotenv()
+OPENAI_API_KEY=os.getenv("OPENAI_API_KEY")
 model = ChatOpenAI(
     api_key=OPENAI_API_KEY,
     model="gpt-4o-mini")
@@ -121,37 +123,120 @@ def post_or_schedule(state: State) -> State:
             post_to_linkedin(body)
 
     return state
+def ask_caption_edit(state: State) -> State:
+    print(f"\nGenerated Caption:\n{state['caption']}")
+    print(f"Generated Content:\n{state['content']}")
+    edit = input("\nWould you like to edit the caption or content? (yes/no): ").strip().lower()
+
+    if edit != "yes":
+        return state
+
+    while True:
+        method = input("Would you like to enter your own caption and content? (yes/no): ").strip().lower()
+
+        if method == "yes":
+            state["caption"] = input("Enter your own caption: ").strip()
+            state["content"] = input("Enter your own content: ").strip()
+
+        else:
+            instruction = input("Describe how you'd like to change the caption and content: ").strip()
+            prompt = f"""
+You are a professional social media content editor.
+
+Original caption:
+{state['caption']}
+
+Original content:
+{state['content']}
+
+Edit instruction from user:
+{instruction}
+
+Now rewrite both the caption and the content according to the instruction. Use the following format:
+
+CAPTION: <your edited caption>
+CONTENT: <your edited content>
+"""
+            result = model.invoke([HumanMessage(content=prompt)])
+            text = result.content
+
+            if "CAPTION:" in text and "CONTENT:" in text:
+                state["caption"] = text.split("CAPTION:")[1].split("CONTENT:")[0].strip()
+                state["content"] = text.split("CONTENT:")[1].strip()
+            else:
+                print("⚠️ Could not parse model output. Keeping original.")
+                continue
+
+        print(f"\n📢 Updated Caption:\n{state['caption']}")
+        print(f"📝 Updated Content:\n{state['content']}")
+        approve = input("Are you happy with this version? (yes/no): ").strip().lower()
+        if approve == "yes":
+            break
+
+    return state
+def add_mentions_to_post(state: State) -> State:
+    mention = input("\nWould you like to mention or tag anyone in the post? (yes/no): ").strip().lower()
+    if mention == "yes":
+        mention_text = input("Type how you'd like to mention them (e.g., '@JohnDoe', 'Thanks to Jane'): ")
+        if mention_text:
+            state["caption"] += f"\n\n{mention_text}"
+    return state
 
 # 📊 LangGraph wiring
 graph = StateGraph(State)
+
+# 🔹 Add all nodes
 graph.add_node("crawl", crawl_site)
 graph.add_node("generate_text", generate_text)
+graph.add_node("ask_edits", ask_caption_edit)
+graph.add_node("add_mentions", add_mentions_to_post)
 graph.add_node("generate_image", generate_image)
 graph.add_node("finalize", post_or_schedule)
+
+# 🔹 Define clean sequential flow
 graph.set_entry_point("crawl")
 graph.add_edge("crawl", "generate_text")
-graph.add_edge("generate_text", "generate_image")
+graph.add_edge("generate_text", "ask_edits")
+graph.add_edge("ask_edits", "add_mentions")
+graph.add_edge("add_mentions", "generate_image")
 graph.add_edge("generate_image", "finalize")
 graph.set_finish_point("finalize")
+
+# 🔹 Compile
 app = graph.compile()
 
 # 🚀 Run it manually
 if __name__ == "__main__":
-    topic = input("Enter topic: ")
-    platforms = input("Enter platforms (facebook, instagram, linkedin): ").replace(" ", "").split(",")
-    schedule = input("Schedule post? (y/n): ").lower()
-    schedule_time = None
-    if schedule == "y":
-        schedule_time = input("Enter time in GST (YYYY-MM-DD HH:MM): ")
+    print("Welcome to the Content Agent! What would you like to do?")
+    print("1. Post new content")
+    print("2. View analytics for existing posts")
+    choice = input("Enter 1 or 2: ").strip()
 
-    initial_state = {
-        "topic": topic,
-        "platforms": platforms,
-        "schedule_time": schedule_time,
-        "caption": None,
-        "content": None,
-        "image_url": None,
-        "retrieved_docs": None
-    }
-    app.invoke(initial_state)
-    print("✅ Done!")
+    if choice == "1":
+        topic = input("Enter topic: ")
+        platforms = input("Enter platforms (facebook, instagram, linkedin): ").replace(" ", "").split(",")
+        schedule = input("Schedule post? (y/n): ").lower()
+        schedule_time = None
+        if schedule == "y":
+            schedule_time = input("Enter time in GST (YYYY-MM-DD HH:MM): ")
+
+        initial_state = {
+            "topic": topic,
+            "platforms": platforms,
+            "schedule_time": schedule_time,
+            "caption": None,
+            "content": None,
+            "image_url": None,
+            "retrieved_docs": None
+        }
+        app.invoke(initial_state)
+        print("✅ Post complete!")
+
+    elif choice == "2":
+        analytics_agent_main = getattr(analytics_agent, "__main__", None)
+        if analytics_agent_main:
+            analytics_agent_main()
+        else:
+            print("⚠️ Could not find analytics main function.")
+    else:
+        print("❌ Invalid choice. Exiting.")
