@@ -123,6 +123,8 @@ def post_or_schedule(state: State) -> State:
             post_to_linkedin(body)
 
     return state
+
+# Step 5: Ask for edits
 def ask_caption_edit(state: State) -> State:
     print(f"\nGenerated Caption:\n{state['caption']}")
     print(f"Generated Content:\n{state['content']}")
@@ -174,6 +176,8 @@ CONTENT: <your edited content>
             break
 
     return state
+
+# Step 6: Add mentions
 def add_mentions_to_post(state: State) -> State:
     mention = input("\nWould you like to mention or tag anyone in the post? (yes/no): ").strip().lower()
     if mention == "yes":
