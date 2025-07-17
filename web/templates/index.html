@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Content Agent UI</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" />
+</head>
+<body>
+  <div class="container">
+    <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo" class="logo" />
+    <h1>Content Generator</h1>
+    <form method="POST" enctype="multipart/form-data">
+      <label>Topic:</label>
+      <input type="text" name="topic" required />
+
+      <label>Choose platforms:</label>
+      <label><input type="checkbox" name="platforms" value="facebook" /> Facebook</label>
+      <label><input type="checkbox" name="platforms" value="instagram" /> Instagram</label>
+      <label><input type="checkbox" name="platforms" value="linkedin" /> LinkedIn</label>
+
+      <label>Upload image (optional):</label>
+      <input type="file" name="image" />
+
+      <button type="submit">Generate Post</button>
+    </form>
+
+    {% with messages = get_flashed_messages() %}
+      {% if messages %}
+        <div class="flash">
+          {% for message in messages %}
+            <p>{{ message }}</p>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+  </div>
+</body>
+</html>
