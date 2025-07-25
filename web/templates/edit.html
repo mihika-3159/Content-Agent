@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Edit Post Content</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <h1>📝 Review Your Post</h1>
+
+    <form method="POST" action="{{ url_for('edit') }}">
+        <label for="caption">Caption:</label><br>
+        <textarea name="caption" rows="3" cols="80">{{ state.caption }}</textarea><br><br>
+
+        <label for="content">Content:</label><br>
+        <textarea name="content" rows="6" cols="80">{{ state.content }}</textarea><br><br>
+
+        <p><strong>Hashtags:</strong> {{ state.hashtags }}</p>
+
+        {% if state.image_url %}
+            <p><strong>Image Uploaded:</strong></p>
+            <img src="{{ state.image_url }}" alt="Uploaded Image" width="300">
+        {% endif %}
+
+        <button type="submit">Next: Add Mentions ➡️</button>
+    </form>
+</body>
+</html>

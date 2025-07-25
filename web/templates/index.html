@@ -1,39 +1,62 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Content Agent UI</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}" />
+    <title>Create Social Media Post</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
 <body>
-  <div class="container">
-    <img src="{{ url_for('static', filename='logo.png') }}" alt="Logo" class="logo" />
-    <h1>Content Generator</h1>
+    <h1>📢 Create a New Social Media Post</h1>
+
     <form method="POST" enctype="multipart/form-data">
-      <label>Topic:</label>
-      <input type="text" name="topic" required />
+        <!-- Topic -->
+        <label for="topic">Topic:</label><br>
+        <input type="text" name="topic" required><br><br>
 
-      <label>Choose platforms:</label>
-      <label><input type="checkbox" name="platforms" value="facebook" /> Facebook</label>
-      <label><input type="checkbox" name="platforms" value="instagram" /> Instagram</label>
-      <label><input type="checkbox" name="platforms" value="linkedin" /> LinkedIn</label>
+        <!-- Industry -->
+        <label for="industry">Target Industry:</label><br>
+        <input type="text" name="industry" placeholder="Optional"><br><br>
 
-      <label>Upload image (optional):</label>
-      <input type="file" name="image" />
+        <!-- Platforms -->
+        <label>Platforms:</label><br>
+        <input type="checkbox" name="platforms" value="facebook"> Facebook<br>
+        <input type="checkbox" name="platforms" value="instagram"> Instagram<br>
+        <input type="checkbox" name="platforms" value="linkedin"> LinkedIn<br><br>
 
-      <button type="submit">Generate Post</button>
+        <!-- Image or Text Only -->
+        <label>Post Type:</label><br>
+        <input type="radio" name="image_mode" value="text-only" checked> Text-only<br>
+        <input type="radio" name="image_mode" value="image"> Include an image<br><br>
+
+        <!-- Image Upload -->
+        <div id="image-upload-section">
+            <label for="image">Upload Image (only if selected above):</label><br>
+            <input type="file" name="image" accept="image/*"><br><br>
+        </div>
+
+        <!-- Schedule -->
+        <label>Schedule the post?</label><br>
+        <input type="radio" name="schedule" value="yes"> Yes<br>
+        <input type="radio" name="schedule" value="no" checked> No<br><br>
+
+        <!-- Schedule Time -->
+        <label for="schedule_time">Schedule Time (GST):</label><br>
+        <input type="datetime-local" name="schedule_time"><br><br>
+
+        <button type="submit">Next ➡️</button>
     </form>
 
-    {% with messages = get_flashed_messages() %}
-      {% if messages %}
-        <div class="flash">
-          {% for message in messages %}
-            <p>{{ message }}</p>
-          {% endfor %}
-        </div>
-      {% endif %}
-    {% endwith %}
-  </div>
+    <script>
+        // Show/hide image section based on selection
+        const radios = document.querySelectorAll('input[name="image_mode"]');
+        const imageSection = document.getElementById('image-upload-section');
+
+        function toggleImageSection() {
+            const mode = [...radios].find(r => r.checked).value;
+            imageSection.style.display = mode === "image" ? "block" : "none";
+        }
+
+        radios.forEach(r => r.addEventListener('change', toggleImageSection));
+        toggleImageSection();
+    </script>
 </body>
 </html>

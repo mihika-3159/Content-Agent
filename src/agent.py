@@ -1,13 +1,18 @@
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 from langgraph.graph import StateGraph
 from langchain_openai import AzureChatOpenAI
 from langchain_core.messages import HumanMessage
 from typing import TypedDict, Optional, List
-from utils.social_media import post_to_facebook, post_to_instagram, post_to_linkedin, schedule_to_platforms, convert_gst_to_utc
+from src.utils.social_media import post_to_facebook, post_to_instagram, post_to_linkedin, schedule_to_platforms, convert_gst_to_utc
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin, urlparse
 import requests, os, time, pytz
 from datetime import datetime, timedelta
-import analytics_agent
+import src.analytics_agent as analytics_agent
+from src.utils.cloudinary_uploader import upload_image_to_cloudinary
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -50,7 +55,6 @@ def ask_image_strategy(state: State) -> State:
         else:
             state["image_mode"] = "upload"
             image_path = input("Enter the path of the image file to use (e.g., web/uploads/myphoto.jpg): ").strip()
-            from utils.cloudinary_uploader import upload_image_to_cloudinary
             image_url = upload_image_to_cloudinary(image_path)
             state["image_url"] = image_url
     return state
@@ -253,10 +257,10 @@ if __name__ == "__main__":
         app.invoke(initial_state)
 
     elif choice == "2":
-        analytics_agent_main = getattr(analytics_agent, "__main__", None)
-        if analytics_agent_main:
-            analytics_agent_main()
-        else:
-            print("⚠️ Could not find analytics function.")
+        try:
+            analytics_agent.main()
+        except Exception as e:
+            print(f"⚠️ Failed to launch analytics: {e}")
+
     else:
         print("❌ Invalid choice. Exiting.")

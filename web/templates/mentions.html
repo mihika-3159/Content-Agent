@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Add Mentions</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <h1>🔗 Want to Mention Anyone?</h1>
+
+    <form method="POST" action="{{ url_for('mention') }}">
+        <label for="mention_text">Mention Text (e.g., "@CloudJune", "Thanks to Rahul"):</label><br>
+        <input type="text" name="mention_text" size="60"><br><br>
+
+        <button type="submit">Finish & Post ✅</button>
+    </form>
+</body>
+</html>

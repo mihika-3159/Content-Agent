@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Post Submitted</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <h1>✅ Post Created Successfully!</h1>
+
+    <p><strong>Caption:</strong> {{ state.caption }}</p>
+    <p><strong>Content:</strong> {{ state.content }}</p>
+    <p><strong>Hashtags:</strong> {{ state.hashtags }}</p>
+    {% if state.image_url %}
+        <p><strong>Image URL:</strong> <a href="{{ state.image_url }}" target="_blank">{{ state.image_url }}</a></p>
+        <img src="{{ state.image_url }}" width="300">
+    {% endif %}
+
+    <p><strong>Platforms:</strong> {{ state.platforms | join(', ') }}</p>
+    <p><strong>Scheduled Time (if any):</strong> {{ state.schedule_time or 'Posted immediately' }}</p>
+
+    <a href="{{ url_for('index') }}">Create Another Post</a>
+</body>
+</html>
